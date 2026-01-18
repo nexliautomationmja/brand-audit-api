@@ -2,16 +2,12 @@ from flask import Flask, request, jsonify
 import requests
 import base64
 import os
-import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Configuration - Set these in Railway environment variables
+# Configuration
 SCREENSHOT_API_KEY = os.environ.get('SCREENSHOT_API_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-
-# Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
 
 # The grading prompt for Gemini
 GRADING_PROMPT = """You are a brutally honest website and brand auditor for Nexli Automation. Your job is to evaluate business websites against 2026 standards — not 2015 standards.
@@ -110,23 +106,12 @@ Your website should be your hardest-working employee — not your weakest link. 
 - **60-69 (D):** Below average. Needs significant work. Hurting credibility.
 - **0-59 (F):** Failing. This website is actively costing the business money.
 
----
-
-## TONE GUIDELINES
-
-- Be direct, not mean.
-- Be specific, not vague.
-- Call out real problems with real consequences.
-- Don't give false praise. If it's bad, say it's bad.
-- Always end with the CTA to book a call.
-
 Now analyze the website screenshot provided:"""
 
 
 def take_screenshot(url):
     """Take a screenshot of the website using ScreenshotOne API"""
     
-    # Make sure URL has protocol
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
     
@@ -153,24 +138,35 @@ def take_screenshot(url):
 
 
 def analyze_with_gemini(screenshot_bytes):
-    """Send screenshot to Gemini for analysis"""
+    """Send screenshot to Gemini for analysis using REST API"""
     
-    # Convert screenshot to base64
     image_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
     
-    # Initialize Gemini model with vision
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     
-    # Create the image part
-    image_part = {
-        'mime_type': 'image/png',
-        'data': image_base64
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": GRADING_PROMPT},
+                {
+                    "inline_data": {
+                        "mime_type": "image/png",
+                        "data": image_base64
+                    }
+                }
+            ]
+        }]
     }
     
-    # Generate response
-    response = model.generate_content([GRADING_PROMPT, image_part])
+    headers = {"Content-Type": "application/json"}
     
-    return response.text
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        result = response.json()
+        return result['candidates'][0]['content']['parts'][0]['text']
+    else:
+        raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
 
 
 @app.route('/audit', methods=['POST'])
@@ -178,10 +174,8 @@ def audit_website():
     """Main endpoint that GHL will call"""
     
     try:
-        # Get data from GHL webhook
         data = request.json
         
-        # Extract website URL - handle different possible field names
         website_url = data.get('website_url') or data.get('websiteUrl') or data.get('website') or data.get('url')
         contact_email = data.get('email')
         contact_name = data.get('name')
@@ -192,13 +186,37 @@ def audit_website():
                 'error': 'No website URL provided'
             }), 400
         
+        # Check API keys
+        if not SCREENSHOT_API_KEY:
+            return jsonify({
+                'success': False,
+                'error': 'SCREENSHOT_API_KEY not configured'
+            }), 500
+            
+        if not GEMINI_API_KEY:
+            return jsonify({
+                'success': False,
+                'error': 'GEMINI_API_KEY not configured'
+            }), 500
+        
         # Step 1: Take screenshot
-        screenshot = take_screenshot(website_url)
+        try:
+            screenshot = take_screenshot(website_url)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Screenshot failed: {str(e)}'
+            }), 500
         
         # Step 2: Analyze with Gemini
-        scorecard = analyze_with_gemini(screenshot)
+        try:
+            scorecard = analyze_with_gemini(screenshot)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Gemini analysis failed: {str(e)}'
+            }), 500
         
-        # Return the scorecard to GHL
         return jsonify({
             'success': True,
             'scorecard': scorecard,
