@@ -6,18 +6,25 @@ import boto3
 from botocore.config import Config
 import uuid
 from datetime import datetime
+import threading
+import json
 
 app = Flask(__name__)
 
+# API Keys
 SCREENSHOT_API_KEY = os.environ.get('SCREENSHOT_API_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
 
+# R2 Config
 R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
 R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
 R2_ENDPOINT = os.environ.get('R2_ENDPOINT')
 R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
 R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
+
+# GHL Webhook URL for sending results back
+GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
 GRADING_PROMPT = """You are a brutally honest website and brand auditor. Score this website out of 100 based on:
 
@@ -62,49 +69,52 @@ Design requirements:
 - Display each category with its score as a progress bar
 - List the top 3 problems clearly
 - Include the bottom line assessment
-- Add a CTA section at the bottom: "Ready to fix these issues? Book a free strategy call: https://nexli.net/book"
-- Make it look like a premium consulting deliverable
-- Include current date
-
-Return ONLY the complete HTML code, no explanations. Start with <!DOCTYPE html>"""
+- Add a CTA section at the bottom: "Ready to fix these issues? Book a free strategy call at nexli.net"
+- Make it print-friendly
+- Return ONLY the HTML, no markdown code fences"""
 
 
 def take_screenshot(url):
-    if not url.startswith('http'):
-        url = 'https://' + url
-    
+    """Take screenshot using ScreenshotOne API"""
+    api_url = "https://api.screenshotone.com/take"
     params = {
-        'access_key': SCREENSHOT_API_KEY,
-        'url': url,
-        'viewport_width': 1280,
-        'viewport_height': 800,
-        'format': 'png',
-        'full_page': 'false'
+        "access_key": SCREENSHOT_API_KEY,
+        "url": url,
+        "full_page": "false",
+        "viewport_width": "1280",
+        "viewport_height": "800",
+        "device_scale_factor": "1",
+        "format": "jpg",
+        "image_quality": "80"
     }
     
-    response = requests.get("https://api.screenshotone.com/take", params=params, timeout=30)
+    response = requests.get(api_url, params=params, timeout=30)
     
     if response.status_code != 200:
         raise Exception(f"Screenshot failed: {response.status_code}")
     
-    return response.content
+    return base64.b64encode(response.content).decode('utf-8')
 
 
-def analyze_with_gemini(screenshot_bytes):
-    image_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
-    
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+def analyze_with_gemini(screenshot_base64):
+    """Analyze screenshot with Gemini Vision"""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     payload = {
         "contents": [{
             "parts": [
                 {"text": GRADING_PROMPT},
-                {"inline_data": {"mime_type": "image/png", "data": image_base64}}
+                {
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": screenshot_base64
+                    }
+                }
             ]
         }]
     }
     
-    response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
+    response = requests.post(url, json=payload, timeout=60)
     
     if response.status_code != 200:
         raise Exception(f"Gemini failed: {response.status_code} - {response.text}")
@@ -114,12 +124,12 @@ def analyze_with_gemini(screenshot_bytes):
 
 
 def generate_pdf_html(audit_data, website_url, business_name):
+    """Generate branded HTML report using Claude"""
     url = "https://api.anthropic.com/v1/messages"
-    
     headers = {
-        "Content-Type": "application/json",
         "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
     }
     
     payload = {
@@ -145,6 +155,7 @@ def generate_pdf_html(audit_data, website_url, business_name):
 
 
 def upload_to_r2(html_content, filename):
+    """Upload HTML report to Cloudflare R2"""
     s3_client = boto3.client(
         's3',
         endpoint_url=R2_ENDPOINT,
@@ -164,49 +175,135 @@ def upload_to_r2(html_content, filename):
     return public_url
 
 
+def send_to_ghl(contact_id, contact_email, contact_name, website_url, report_url, audit_data, success=True, error=None):
+    """Send results back to GHL via webhook"""
+    if not GHL_WEBHOOK_URL:
+        print("Warning: GHL_WEBHOOK_URL not configured, skipping callback")
+        return
+    
+    payload = {
+        "contact_id": contact_id,
+        "contact_email": contact_email,
+        "contact_name": contact_name,
+        "website_url": website_url,
+        "success": success,
+        "report_url": report_url,
+        "audit_data": audit_data,
+        "error": error,
+        "processed_at": datetime.now().isoformat()
+    }
+    
+    try:
+        response = requests.post(GHL_WEBHOOK_URL, json=payload, timeout=30)
+        print(f"GHL callback response: {response.status_code}")
+    except Exception as e:
+        print(f"Failed to send to GHL: {str(e)}")
+
+
+def process_audit_async(contact_id, contact_email, contact_name, website_url):
+    """Background task to process the audit"""
+    report_url = None
+    audit_data = None
+    
+    try:
+        print(f"Starting audit for {website_url}")
+        
+        # Step 1: Screenshot
+        print("Taking screenshot...")
+        screenshot = take_screenshot(website_url)
+        
+        # Step 2: Gemini analysis
+        print("Analyzing with Gemini...")
+        audit_json = analyze_with_gemini(screenshot)
+        
+        # Clean up JSON
+        audit_json = audit_json.strip()
+        if audit_json.startswith('```json'):
+            audit_json = audit_json[7:]
+        elif audit_json.startswith('```'):
+            audit_json = audit_json.split('\n', 1)[1] if '\n' in audit_json else audit_json[3:]
+        if audit_json.endswith('```'):
+            audit_json = audit_json.rsplit('```', 1)[0]
+        audit_json = audit_json.strip()
+        
+        # Parse to validate JSON
+        audit_data = json.loads(audit_json)
+        
+        # Step 3: Generate branded HTML report with Claude
+        print("Generating HTML report...")
+        html_report = generate_pdf_html(audit_json, website_url, contact_name)
+        
+        # Clean up HTML if needed
+        if '```html' in html_report:
+            html_report = html_report.split('```html')[1].split('```')[0]
+        elif '```' in html_report:
+            parts = html_report.split('```')
+            if len(parts) >= 2:
+                html_report = parts[1]
+        
+        # Step 4: Upload to R2
+        print("Uploading to R2...")
+        filename = f"audit-{uuid.uuid4().hex[:8]}-{datetime.now().strftime('%Y%m%d')}.html"
+        report_url = upload_to_r2(html_report, filename)
+        
+        print(f"Audit complete! Report: {report_url}")
+        
+        # Step 5: Send results back to GHL
+        send_to_ghl(
+            contact_id=contact_id,
+            contact_email=contact_email,
+            contact_name=contact_name,
+            website_url=website_url,
+            report_url=report_url,
+            audit_data=audit_data,
+            success=True
+        )
+        
+    except Exception as e:
+        print(f"Audit failed: {str(e)}")
+        send_to_ghl(
+            contact_id=contact_id,
+            contact_email=contact_email,
+            contact_name=contact_name,
+            website_url=website_url,
+            report_url=None,
+            audit_data=None,
+            success=False,
+            error=str(e)
+        )
+
+
 @app.route('/audit', methods=['POST'])
 def audit_website():
+    """
+    Receive webhook from GHL, immediately return 200, process in background.
+    """
     try:
         data = request.json or {}
         
+        # Extract fields (support multiple field names)
         website_url = data.get('website_url') or data.get('websiteUrl') or data.get('website') or data.get('url')
         contact_email = data.get('email')
         contact_name = data.get('name')
+        contact_id = data.get('id') or data.get('contact_id')
         
         if not website_url:
             return jsonify({'success': False, 'error': 'No website URL provided'}), 400
         
-        screenshot = take_screenshot(website_url)
+        # Start background processing
+        thread = threading.Thread(
+            target=process_audit_async,
+            args=(contact_id, contact_email, contact_name, website_url)
+        )
+        thread.daemon = True
+        thread.start()
         
-        audit_json = analyze_with_gemini(screenshot)
-        
-        audit_json = audit_json.strip()
-        if audit_json.startswith('```json'):
-            audit_json = audit_json[7:]
-        if audit_json.startswith('```'):
-            audit_json = audit_json[3:]
-        if audit_json.endswith('```'):
-            audit_json = audit_json[:-3]
-        audit_json = audit_json.strip()
-        
-        html_report = generate_pdf_html(audit_json, website_url, contact_name)
-        
-        if '```html' in html_report:
-            html_report = html_report.split('```html')[1].split('```')[0]
-        elif html_report.startswith('```'):
-            html_report = html_report[3:]
-            if html_report.endswith('```'):
-                html_report = html_report[:-3]
-        
-        filename = f"audit-{uuid.uuid4().hex[:8]}-{datetime.now().strftime('%Y%m%d')}.html"
-        report_url = upload_to_r2(html_report, filename)
-        
+        # Immediately return success
         return jsonify({
             'success': True,
-            'report_url': report_url,
+            'message': 'Audit started - results will be sent to webhook when complete',
             'website_url': website_url,
-            'contact_email': contact_email,
-            'contact_name': contact_name
+            'contact_id': contact_id
         })
         
     except Exception as e:
@@ -220,10 +317,12 @@ def audit_website():
 def health_check():
     return jsonify({
         'status': 'healthy',
+        'version': '2.0-async',
         'screenshot_key': bool(SCREENSHOT_API_KEY),
         'gemini_key': bool(GEMINI_API_KEY),
         'claude_key': bool(CLAUDE_API_KEY),
-        'r2_configured': bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY)
+        'r2_configured': bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY),
+        'ghl_webhook': bool(GHL_WEBHOOK_URL)
     })
 
 
