@@ -9,12 +9,10 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# API Keys
 SCREENSHOT_API_KEY = os.environ.get('SCREENSHOT_API_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
 
-# R2 Config
 R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
 R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
 R2_ENDPOINT = os.environ.get('R2_ENDPOINT')
@@ -178,29 +176,28 @@ def audit_website():
         if not website_url:
             return jsonify({'success': False, 'error': 'No website URL provided'}), 400
         
-        # Step 1: Screenshot
         screenshot = take_screenshot(website_url)
         
-        # Step 2: Gemini analysis
         audit_json = analyze_with_gemini(screenshot)
         
-        # Clean up JSON if needed
         audit_json = audit_json.strip()
+        if audit_json.startswith('```json'):
+            audit_json = audit_json[7:]
         if audit_json.startswith('```'):
-            audit_json = audit_json.split('\n', 1)[1]
+            audit_json = audit_json[3:]
         if audit_json.endswith('```'):
-            audit_json = audit_json.rsplit('```', 1)[0]
+            audit_json = audit_json[:-3]
+        audit_json = audit_json.strip()
         
-        # Step 3: Generate branded HTML report with Claude
         html_report = generate_pdf_html(audit_json, website_url, contact_name)
         
-        # Clean up HTML if needed
         if '```html' in html_report:
             html_report = html_report.split('```html')[1].split('```')[0]
-        elif '```' in html_report:
-            html_report = html_report.split('```')[1].split('```')[0]
+        elif html_report.startswith('```'):
+            html_report = html_report[3:]
+            if html_report.endswith('```'):
+                html_report = html_report[:-3]
         
-        # Step 4: Upload to R2
         filename = f"audit-{uuid.uuid4().hex[:8]}-{datetime.now().strftime('%Y%m%d')}.html"
         report_url = upload_to_r2(html_report, filename)
         
@@ -233,13 +230,3 @@ def health_check():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-```
-
----
-
-**Also update `requirements.txt`:**
-```
-flask==3.0.0
-requests==2.31.0
-gunicorn==21.2.0
-boto3==1.34.0
