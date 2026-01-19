@@ -26,7 +26,17 @@ R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
 # GHL Webhook URL for sending results back
 GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
-GRADING_PROMPT = """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
+GRADING_PROMPT = """You are a brutally critical digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
+
+IMPORTANT SCORING GUIDELINES:
+- Use the FULL range of scores (0-100). Most websites should score between 30-70.
+- A score of 80+ means EXCEPTIONAL - reserved for top 5% of sites
+- A score of 70-79 means GOOD - solid but has clear room for improvement  
+- A score of 50-69 means AVERAGE - significant issues that hurt conversions
+- A score of 30-49 means POOR - major problems that actively repel prospects
+- A score below 30 means FAILING - fundamentally broken or unprofessional
+
+BE HARSH. Most small business websites are mediocre at best. Don't grade on a curve. Grade against what a $1M+ prospect would expect.
 
 Score the website out of 100 based on these criteria:
 
@@ -34,47 +44,49 @@ Score the website out of 100 based on these criteria:
    - Professional appearance, credentials displayed, firm history
    - Trust signals (certifications, affiliations, SEC/FINRA disclosures)
    - Does it look like a $1M+ AUM firm or a side hustle?
+   - Deduct heavily if: no credentials shown, stock photos, generic content, looks cheap
 
 2. CLIENT EXPERIENCE (25 pts)
    - Clear value proposition for ideal clients
    - Easy navigation, mobile-friendly design
    - Page load speed and modern functionality
+   - Deduct heavily if: confusing navigation, outdated design, slow loading, cluttered
 
 3. DIFFERENTIATION (25 pts)
    - What makes this advisor different from 10,000 others?
    - Niche/specialty clearly communicated?
    - Unique perspective or approach visible?
+   - Deduct heavily if: generic messaging, no clear niche, sounds like every other advisor
 
 4. CONVERSION PATH (25 pts)
    - Clear call-to-action for qualified prospects
    - Easy appointment booking or contact method
    - Lead capture for prospects not ready to talk yet
-
-Evaluate like a CMO reviewing a competitor's site - be analytical and specific.
+   - Deduct heavily if: no clear CTA, buried contact info, no lead magnet
 
 Return ONLY valid JSON in this exact format:
 {
-    "overall_score": 72,
-    "grade": "C+",
+    "overall_score": 52,
+    "grade": "D+",
     "summary": "One sentence positioning statement about the site's current state",
     "categories": {
         "credibility_trust": {
-            "score": 18,
-            "findings": "What's working and what's missing - be specific",
+            "score": 14,
+            "findings": "What's working and what's missing - be specific and critical",
             "opportunity": "What implementing this properly could mean for their practice"
         },
         "client_experience": {
-            "score": 20,
-            "findings": "Specific observations about UX, speed, mobile",
+            "score": 15,
+            "findings": "Specific observations about UX, speed, mobile - be critical",
             "opportunity": "Impact on prospect engagement and bounce rate"
         },
         "differentiation": {
-            "score": 15,
-            "findings": "How well they stand out (or don't) from competitors",
+            "score": 10,
+            "findings": "How well they stand out (or don't) from competitors - be honest",
             "opportunity": "What clear positioning could do for attracting ideal clients"
         },
         "conversion_path": {
-            "score": 19,
+            "score": 13,
             "findings": "How easy/hard it is for a prospect to take action",
             "opportunity": "Potential increase in consultation requests"
         }
@@ -109,6 +121,7 @@ PDF_PROMPT = """Create a professional, executive-style HTML document for a websi
 
 Website URL: {website_url}
 Firm/Advisor Name: {business_name}
+Assessment Date: {assessment_date}
 
 CRITICAL - Use this exact SVG for the Nexli logo (the Breakthrough mark with wordmark):
 <svg viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -139,7 +152,8 @@ Structure:
    - Wrap the Nexli SVG logo in: <a href="https://www.nexli.net/#book" target="_blank" style="text-decoration:none;">...</a>
    - Make logo roughly 140px wide
    - "Digital Presence Assessment" as subtitle below logo
-   - "Prepared for [business_name]" and date of assessment
+   - "Prepared for [business_name]"
+   - Use the exact Assessment Date provided above (do NOT generate your own date)
 
 2. EXECUTIVE SUMMARY
    - Overall score displayed prominently in a circle/badge (color-coded: green 80+, blue 60-79, orange 40-59, red below 40)
@@ -249,7 +263,8 @@ def generate_pdf_html(audit_data, website_url, business_name):
             "content": PDF_PROMPT.format(
                 audit_data=audit_data,
                 website_url=website_url,
-                business_name=business_name or "the business"
+                business_name=business_name or "the business",
+                assessment_date=datetime.now().strftime("%B %d, %Y")
             )
         }]
     }
