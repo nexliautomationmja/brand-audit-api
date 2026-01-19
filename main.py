@@ -26,52 +26,152 @@ R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
 # GHL Webhook URL for sending results back
 GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
-GRADING_PROMPT = """You are a brutally honest website and brand auditor. Score this website out of 100 based on:
+GRADING_PROMPT = """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
 
-1. FIRST IMPRESSION (20 pts) - Clear headline, value proposition, trust at first glance
-2. VISUAL DESIGN (20 pts) - Logo, colors, typography, modern aesthetic
-3. MOBILE & SPEED (20 pts) - Responsive, clean, fast-loading design
-4. USER EXPERIENCE (20 pts) - Navigation, clear CTA, trust signals
-5. LEAD CAPTURE (20 pts) - Contact options, booking, lead magnets
+Score the website out of 100 based on these criteria:
 
-Be harsh but fair. Return ONLY valid JSON in this exact format:
+1. CREDIBILITY & TRUST (25 pts)
+   - Professional appearance, credentials displayed, firm history
+   - Trust signals (certifications, affiliations, SEC/FINRA disclosures)
+   - Does it look like a $1M+ AUM firm or a side hustle?
+
+2. CLIENT EXPERIENCE (25 pts)
+   - Clear value proposition for ideal clients
+   - Easy navigation, mobile-friendly design
+   - Page load speed and modern functionality
+
+3. DIFFERENTIATION (25 pts)
+   - What makes this advisor different from 10,000 others?
+   - Niche/specialty clearly communicated?
+   - Unique perspective or approach visible?
+
+4. CONVERSION PATH (25 pts)
+   - Clear call-to-action for qualified prospects
+   - Easy appointment booking or contact method
+   - Lead capture for prospects not ready to talk yet
+
+Evaluate like a CMO reviewing a competitor's site - be analytical and specific.
+
+Return ONLY valid JSON in this exact format:
 {
-    "overall_score": 65,
-    "grade": "D",
+    "overall_score": 72,
+    "grade": "C+",
+    "summary": "One sentence positioning statement about the site's current state",
     "categories": {
-        "first_impression": {"score": 12, "verdict": "One line verdict"},
-        "visual_design": {"score": 14, "verdict": "One line verdict"},
-        "mobile_speed": {"score": 13, "verdict": "One line verdict"},
-        "user_experience": {"score": 15, "verdict": "One line verdict"},
-        "lead_capture": {"score": 11, "verdict": "One line verdict"}
+        "credibility_trust": {
+            "score": 18,
+            "findings": "What's working and what's missing - be specific",
+            "opportunity": "What implementing this properly could mean for their practice"
+        },
+        "client_experience": {
+            "score": 20,
+            "findings": "Specific observations about UX, speed, mobile",
+            "opportunity": "Impact on prospect engagement and bounce rate"
+        },
+        "differentiation": {
+            "score": 15,
+            "findings": "How well they stand out (or don't) from competitors",
+            "opportunity": "What clear positioning could do for attracting ideal clients"
+        },
+        "conversion_path": {
+            "score": 19,
+            "findings": "How easy/hard it is for a prospect to take action",
+            "opportunity": "Potential increase in consultation requests"
+        }
     },
-    "top_problems": [
-        "First major problem and why it costs them clients",
-        "Second problem and business impact",
-        "Third problem and what it signals"
+    "strategic_recommendations": [
+        {
+            "priority": "HIGH",
+            "issue": "Specific issue identified",
+            "impact": "How this affects their ability to attract high-value clients",
+            "recommendation": "Actionable suggestion framed as strategic advice"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "Second issue",
+            "impact": "Business impact",
+            "recommendation": "Strategic suggestion"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "Third issue",
+            "impact": "Business impact",
+            "recommendation": "Strategic suggestion"
+        }
     ],
-    "bottom_line": "2-3 sentence brutally honest summary"
+    "competitive_insight": "One paragraph comparing this site's positioning to what top-performing advisory firms typically do. Frame as 'firms that consistently attract $500K+ clients tend to...' - educational, not condescending.",
+    "bottom_line": "2-3 sentences summarizing the site's current effectiveness at converting high-value prospects, framed as opportunity rather than criticism. End with a forward-looking statement."
 }"""
 
-PDF_PROMPT = """Create a beautiful, professional HTML document for a website audit report. Use this data:
+PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
 
 {audit_data}
 
 Website URL: {website_url}
-Business Name: {business_name}
+Firm/Advisor Name: {business_name}
+
+CRITICAL - Use this exact SVG for the Nexli logo (the Breakthrough mark with wordmark):
+<svg viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#2563EB"/>
+            <stop offset="100%" style="stop-color:#06B6D4"/>
+        </linearGradient>
+    </defs>
+    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
+    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad)"/>
+    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
+    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="#0A1628">Nexli</text>
+</svg>
 
 Design requirements:
-- Use Nexli branding: Primary blue #2563EB, Cyan accent #06B6D4, Dark #0A1628
-- Clean, modern design with plenty of white space
-- Professional typography (use system fonts)
-- Include a header with "NEXLI" branding and "Website Audit Report" title
-- Show the overall score prominently with a color indicator (red for F/D, yellow for C, green for B/A)
-- Display each category with its score as a progress bar
-- List the top 3 problems clearly
-- Include the bottom line assessment
-- Add a CTA section at the bottom: "Ready to fix these issues? Book a free strategy call at nexli.net"
-- Make it print-friendly
-- Return ONLY the HTML, no markdown code fences"""
+- Use Nexli branding: Primary blue #2563EB, Cyan accent #06B6D4, Dark #0A1628, Light gray #F8FAFC
+- Clean, sophisticated design appropriate for financial professionals
+- Professional typography (system fonts - use font-weight strategically)
+- Executive summary style - scannable with clear hierarchy
+
+Structure:
+1. HEADER
+   - Use the exact Nexli SVG logo provided above (the three arrows + "Nexli" wordmark)
+   - Make logo roughly 140px wide
+   - "Digital Presence Assessment" as subtitle below logo
+   - "Prepared for [business_name]" and date of assessment
+
+2. EXECUTIVE SUMMARY
+   - Overall score displayed prominently in a circle/badge (color-coded: green 80+, blue 60-79, orange 40-59, red below 40)
+   - Grade letter next to it
+   - The "summary" field as a one-liner
+   - The "bottom_line" as a 2-3 sentence overview
+
+3. ASSESSMENT BREAKDOWN
+   - Four category cards in a 2x2 grid (or stacked on mobile)
+   - Each card shows: Category name, Score as progress bar (out of 25), Findings, Opportunity
+   - Use subtle background colors to differentiate
+
+4. STRATEGIC RECOMMENDATIONS
+   - List the 3 recommendations with priority badges (HIGH = red/orange, MEDIUM = blue)
+   - Each shows: Issue, Impact, Recommendation
+   - Frame as "opportunities" not "problems"
+
+5. COMPETITIVE INSIGHT
+   - Styled as a quote/callout box
+   - The "competitive_insight" paragraph
+
+6. NEXT STEPS CTA
+   - Professional call-to-action section
+   - Include the Nexli logo SVG again (same as header)
+   - Headline: "Ready to Elevate Your Digital Presence?"
+   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
+   - Button: "Book Your Strategy Call" linking to https://www.nexli.net/#book
+   - Below button: "No obligation • 30-minute consultation • Tailored recommendations"
+
+7. FOOTER
+   - Small Nexli logo (icon only version - just the three arrows, no text)
+   - "Assessment powered by Nexli"
+   - "Helping financial advisors attract and convert high-value clients"
+   - Small disclaimer: "This assessment is based on automated analysis and publicly visible website elements."
+
+Make it print-friendly with proper margins. The tone should feel like a report from a peer consultant, not a criticism from a vendor. Return ONLY the HTML, no markdown code fences."""
 
 
 def take_screenshot(url):
