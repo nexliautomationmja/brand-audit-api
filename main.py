@@ -162,18 +162,19 @@ Structure:
    - The "competitive_insight" paragraph
 
 6. NEXT STEPS CTA - THIS SECTION IS REQUIRED
-   - Professional call-to-action section with a light blue (#EFF6FF) background and padding (40px)
-   - Center all content in this section
+   - Professional call-to-action section with a light blue (#EFF6FF) background
    - Include the clickable Nexli logo SVG wrapped in <a href="https://www.nexli.net/#book" target="_blank">
-   - Headline: "Ready to Elevate Your Digital Presence?" (24px, bold, dark color)
-   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals." (16px, gray)
-   - MUST include a LARGE, PROMINENT button using this exact code:
-     <div style="text-align:center; margin:30px 0;">
-       <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:20px 48px; border-radius:50px; text-decoration:none; font-weight:700; font-size:20px; box-shadow: 0 4px 14px rgba(37,99,235,0.4);">Book Your Strategy Call</a>
-     </div>
-   - Below button: "No obligation • 30-minute consultation • Tailored recommendations" (small, gray text, centered)
+   - Headline: "Ready to Elevate Your Digital Presence?"
+   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
+   - Below button: "No obligation • 30-minute consultation • Tailored recommendations"
 
-7. FOOTER
+7. LARGE CTA BUTTON AT THE VERY BOTTOM - REQUIRED
+   - At the absolute bottom of the document, before the footer, add this exact button centered:
+   <div style="text-align:center; padding:40px 20px; background:#EFF6FF;">
+     <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background:linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:18px 48px; border-radius:50px; text-decoration:none; font-weight:700; font-size:18px; box-shadow:0 4px 14px rgba(37,99,235,0.3);">Book Consultation</a>
+   </div>
+
+8. FOOTER
    - Small clickable Nexli logo wrapped in <a href="https://www.nexli.net/#book" target="_blank">
    - "Assessment powered by Nexli"
    - "Helping financial advisors attract and convert high-value clients"
