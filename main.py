@@ -130,9 +130,13 @@ Design requirements:
 - Professional typography (system fonts - use font-weight strategically)
 - Executive summary style - scannable with clear hierarchy
 
+CRITICAL REQUIREMENTS:
+1. ALL Nexli logos must be wrapped in an <a href="https://www.nexli.net/#book" target="_blank"> tag so they are clickable
+2. The CTA section MUST have a visible, styled button with the text "Book Your Strategy Call"
+
 Structure:
 1. HEADER
-   - Use the exact Nexli SVG logo provided above (the three arrows + "Nexli" wordmark)
+   - Wrap the Nexli SVG logo in: <a href="https://www.nexli.net/#book" target="_blank" style="text-decoration:none;">...</a>
    - Make logo roughly 140px wide
    - "Digital Presence Assessment" as subtitle below logo
    - "Prepared for [business_name]" and date of assessment
@@ -157,16 +161,17 @@ Structure:
    - Styled as a quote/callout box
    - The "competitive_insight" paragraph
 
-6. NEXT STEPS CTA
-   - Professional call-to-action section
-   - Include the Nexli logo SVG again (same as header)
+6. NEXT STEPS CTA - THIS SECTION IS REQUIRED
+   - Professional call-to-action section with a light blue (#EFF6FF) background
+   - Include the clickable Nexli logo SVG wrapped in <a href="https://www.nexli.net/#book" target="_blank">
    - Headline: "Ready to Elevate Your Digital Presence?"
    - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
-   - Button: "Book Your Strategy Call" linking to https://www.nexli.net/#book
+   - MUST include this exact button code:
+     <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:16px 32px; border-radius:8px; text-decoration:none; font-weight:600; font-size:18px; margin:20px 0;">Book Your Strategy Call</a>
    - Below button: "No obligation • 30-minute consultation • Tailored recommendations"
 
 7. FOOTER
-   - Small Nexli logo (icon only version - just the three arrows, no text)
+   - Small clickable Nexli logo wrapped in <a href="https://www.nexli.net/#book" target="_blank">
    - "Assessment powered by Nexli"
    - "Helping financial advisors attract and convert high-value clients"
    - Small disclaimer: "This assessment is based on automated analysis and publicly visible website elements."
