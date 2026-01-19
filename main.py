@@ -98,7 +98,7 @@ def take_screenshot(url):
 
 def analyze_with_gemini(screenshot_base64):
     """Analyze screenshot with Gemini Vision"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     
     payload = {
         "contents": [{
