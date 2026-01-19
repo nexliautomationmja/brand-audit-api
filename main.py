@@ -290,6 +290,11 @@ def audit_website():
         if not website_url:
             return jsonify({'success': False, 'error': 'No website URL provided'}), 400
         
+        # Normalize URL - add https:// if missing
+        website_url = website_url.strip()
+        if not website_url.startswith('http://') and not website_url.startswith('https://'):
+            website_url = 'https://' + website_url
+        
         # Start background processing
         thread = threading.Thread(
             target=process_audit_async,
