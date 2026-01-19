@@ -26,7 +26,8 @@ R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
 # GHL Webhook URL for sending results back
 GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
-GRADING_PROMPT = """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
+GRADING_PROMPTS = {
+    "wealth_management": """You are a digital marketing strategist specializing in wealth management firms. Analyze this website from the perspective of a high-net-worth prospect ($500K+ investable assets) evaluating whether to trust this advisor with their wealth.
 
 YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
 
@@ -47,27 +48,131 @@ GRADE SCALE (based on overall score out of 100):
 - Below 60: F
 (Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
 
-CATEGORIES TO EVALUATE:
+CATEGORIES TO EVALUATE FOR WEALTH MANAGEMENT:
 
 1. CREDIBILITY & TRUST (25 pts)
-   - Professional appearance, credentials displayed, firm history
-   - Trust signals (certifications, affiliations, SEC/FINRA disclosures)
-   - Does it look like a legitimate firm or amateur?
+   - Professional credentials displayed (CFP, CFA, CIMA, ChFC)?
+   - Fiduciary status clearly stated?
+   - SEC/FINRA disclosures accessible?
+   - Firm history, team bios, AUM indicators?
+   - Does it look like a legitimate wealth management firm?
 
 2. CLIENT EXPERIENCE (25 pts)
-   - Clear value proposition for ideal clients
-   - Easy navigation, mobile-friendly design
-   - Page load speed and modern functionality
+   - Clear value proposition for high-net-worth clients?
+   - Investment philosophy communicated?
+   - Easy navigation, mobile-friendly, modern design?
+   - Professional imagery (not cheap stock photos)?
 
 3. DIFFERENTIATION (25 pts)
-   - What makes this advisor different from competitors?
-   - Niche/specialty clearly communicated?
-   - Unique perspective or approach visible?
+   - What makes this firm different from other RIAs?
+   - Target client clearly defined (executives, business owners, retirees)?
+   - Specialized services (tax planning, estate, equity compensation)?
+   - Unique investment approach or philosophy?
 
 4. CONVERSION PATH (25 pts)
-   - Clear call-to-action for qualified prospects
-   - Easy appointment booking or contact method
-   - Lead capture for prospects not ready to talk yet
+   - Clear call-to-action for qualified prospects?
+   - Easy way to schedule a consultation?
+   - Lead capture for prospects not ready to talk?
+   - Fee transparency or "what to expect" information?
+
+Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
+{
+    "overall_score": [SUM OF FOUR CATEGORY SCORES],
+    "grade": "[LETTER GRADE BASED ON SCORE]",
+    "summary": "[One sentence about the site's current state]",
+    "categories": {
+        "credibility_trust": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What improving this could mean for their practice]"
+        },
+        "client_experience": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Impact on prospect engagement]"
+        },
+        "differentiation": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What clear positioning could do for them]"
+        },
+        "conversion_path": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Potential improvement in conversions]"
+        }
+    },
+    "strategic_recommendations": [
+        {
+            "priority": "HIGH",
+            "issue": "[Most important issue you identified]",
+            "impact": "[How this affects their ability to attract HNW clients]",
+            "recommendation": "[Actionable suggestion]"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "[Second issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "[Third issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
+        }
+    ],
+    "competitive_insight": "[One paragraph comparing this site to what top-performing wealth management firms typically do.]",
+    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
+}""",
+
+    "cpa": """You are a digital marketing strategist specializing in CPA and accounting firms. Analyze this website from the perspective of a business owner or high-income individual looking for a trusted CPA.
+
+YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
+
+Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
+
+SCORING GUIDE:
+- 20-25: Excellent - This aspect is genuinely well-executed
+- 15-19: Good - Solid but has room for improvement
+- 10-14: Fair - Noticeable issues that hurt effectiveness
+- 5-9: Poor - Significant problems
+- 0-4: Failing - Fundamentally broken or missing
+
+GRADE SCALE (based on overall score out of 100):
+- 90-100: A
+- 80-89: B
+- 70-79: C
+- 60-69: D
+- Below 60: F
+(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
+
+CATEGORIES TO EVALUATE FOR CPA/ACCOUNTING FIRMS:
+
+1. CREDIBILITY & TRUST (25 pts)
+   - CPA credentials clearly displayed?
+   - State licensure mentioned?
+   - Professional memberships (AICPA, state society)?
+   - Firm history, team qualifications?
+   - Security and confidentiality signals?
+
+2. CLIENT EXPERIENCE (25 pts)
+   - Services clearly listed (tax prep, bookkeeping, advisory, audit)?
+   - Industry specializations shown (real estate, medical, small business)?
+   - Easy navigation, modern design?
+   - Client portal access visible?
+
+3. DIFFERENTIATION (25 pts)
+   - What makes this CPA different from others?
+   - Niche industries or client types served?
+   - Proactive tax planning vs just compliance?
+   - Technology-forward approach?
+
+4. CONVERSION PATH (25 pts)
+   - Clear call-to-action for new clients?
+   - Easy way to request a consultation or quote?
+   - Contact information prominently displayed?
+   - Lead capture for tax season or newsletter?
 
 Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
 {
@@ -116,9 +221,112 @@ Return ONLY valid JSON in this exact format (replace all values with your actual
             "recommendation": "[Actionable suggestion]"
         }
     ],
-    "competitive_insight": "[One paragraph comparing this site to what top-performing advisory firms typically do. Be educational, not condescending.]",
+    "competitive_insight": "[One paragraph comparing this site to what top-performing CPA firms typically do.]",
+    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
+}""",
+
+    "financial_advisor": """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of someone looking for a financial advisor to help with their financial planning needs.
+
+YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
+
+Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
+
+SCORING GUIDE:
+- 20-25: Excellent - This aspect is genuinely well-executed
+- 15-19: Good - Solid but has room for improvement
+- 10-14: Fair - Noticeable issues that hurt effectiveness
+- 5-9: Poor - Significant problems
+- 0-4: Failing - Fundamentally broken or missing
+
+GRADE SCALE (based on overall score out of 100):
+- 90-100: A
+- 80-89: B
+- 70-79: C
+- 60-69: D
+- Below 60: F
+(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
+
+CATEGORIES TO EVALUATE FOR FINANCIAL ADVISORS:
+
+1. CREDIBILITY & TRUST (25 pts)
+   - Professional credentials displayed (CFP, ChFC, CLU)?
+   - Fiduciary status or fee structure clarity?
+   - Regulatory disclosures accessible?
+   - Team bios and firm background?
+   - Professional appearance?
+
+2. CLIENT EXPERIENCE (25 pts)
+   - Clear explanation of services (retirement, insurance, estate)?
+   - Who they help best (young professionals, families, pre-retirees)?
+   - Easy navigation, mobile-friendly design?
+   - Educational content or resources?
+
+3. DIFFERENTIATION (25 pts)
+   - What makes this advisor different?
+   - Planning philosophy or approach clear?
+   - Target client defined?
+   - Specialized expertise shown?
+
+4. CONVERSION PATH (25 pts)
+   - Clear call-to-action?
+   - Easy way to schedule a meeting?
+   - Free consultation or financial checkup offered?
+   - Lead magnet or newsletter signup?
+
+Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
+{
+    "overall_score": [SUM OF FOUR CATEGORY SCORES],
+    "grade": "[LETTER GRADE BASED ON SCORE]",
+    "summary": "[One sentence about the site's current state]",
+    "categories": {
+        "credibility_trust": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What improving this could mean for their practice]"
+        },
+        "client_experience": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Impact on prospect engagement]"
+        },
+        "differentiation": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What clear positioning could do for them]"
+        },
+        "conversion_path": {
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Potential improvement in conversions]"
+        }
+    },
+    "strategic_recommendations": [
+        {
+            "priority": "HIGH",
+            "issue": "[Most important issue you identified]",
+            "impact": "[How this affects their ability to attract clients]",
+            "recommendation": "[Actionable suggestion]"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "[Second issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "[Third issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
+        }
+    ],
+    "competitive_insight": "[One paragraph comparing this site to what top-performing financial advisors typically do.]",
     "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
 }"""
+}
+
+# Default prompt if no firm type specified
+DEFAULT_GRADING_PROMPT = GRADING_PROMPTS["financial_advisor"]
 
 PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
 
@@ -224,14 +432,27 @@ def take_screenshot(url):
     return base64.b64encode(response.content).decode('utf-8')
 
 
-def analyze_with_gemini(screenshot_base64):
+def analyze_with_gemini(screenshot_base64, firm_type=None):
     """Analyze screenshot with Gemini Vision"""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    # Select the appropriate grading prompt based on firm type
+    firm_type_key = None
+    if firm_type:
+        firm_type_lower = firm_type.lower().strip()
+        if "wealth" in firm_type_lower:
+            firm_type_key = "wealth_management"
+        elif "cpa" in firm_type_lower or "account" in firm_type_lower:
+            firm_type_key = "cpa"
+        else:
+            firm_type_key = "financial_advisor"
+    
+    grading_prompt = GRADING_PROMPTS.get(firm_type_key, DEFAULT_GRADING_PROMPT)
     
     payload = {
         "contents": [{
             "parts": [
-                {"text": GRADING_PROMPT},
+                {"text": grading_prompt},
                 {
                     "inline_data": {
                         "mime_type": "image/jpeg",
@@ -329,13 +550,13 @@ def send_to_ghl(contact_id, contact_email, contact_name, website_url, report_url
         print(f"Failed to send to GHL: {str(e)}")
 
 
-def process_audit_async(contact_id, contact_email, contact_name, website_url):
+def process_audit_async(contact_id, contact_email, contact_name, website_url, firm_type=None):
     """Background task to process the audit"""
     report_url = None
     audit_data = None
     
     try:
-        print(f"Starting audit for {website_url}")
+        print(f"Starting audit for {website_url} (firm type: {firm_type or 'default'})")
         
         # Step 1: Screenshot
         print("Taking screenshot...")
@@ -343,7 +564,7 @@ def process_audit_async(contact_id, contact_email, contact_name, website_url):
         
         # Step 2: Gemini analysis
         print("Analyzing with Gemini...")
-        audit_json = analyze_with_gemini(screenshot)
+        audit_json = analyze_with_gemini(screenshot, firm_type)
         
         # Clean up JSON
         audit_json = audit_json.strip()
@@ -415,6 +636,7 @@ def audit_website():
         contact_email = data.get('email')
         contact_name = data.get('name')
         contact_id = data.get('id') or data.get('contact_id')
+        firm_type = data.get('firm_type') or data.get('firmType') or data.get('type')
         
         if not website_url:
             return jsonify({'success': False, 'error': 'No website URL provided'}), 400
@@ -427,7 +649,7 @@ def audit_website():
         # Start background processing
         thread = threading.Thread(
             target=process_audit_async,
-            args=(contact_id, contact_email, contact_name, website_url)
+            args=(contact_id, contact_email, contact_name, website_url, firm_type)
         )
         thread.daemon = True
         thread.start()
@@ -437,7 +659,8 @@ def audit_website():
             'success': True,
             'message': 'Audit started - results will be sent to webhook when complete',
             'website_url': website_url,
-            'contact_id': contact_id
+            'contact_id': contact_id,
+            'firm_type': firm_type
         })
         
     except Exception as e:
