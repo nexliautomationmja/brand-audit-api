@@ -26,93 +26,98 @@ R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
 # GHL Webhook URL for sending results back
 GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
-GRADING_PROMPT = """You are a brutally critical digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
+GRADING_PROMPT = """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of a high-net-worth prospect evaluating whether to trust this advisor with their wealth.
 
-IMPORTANT SCORING GUIDELINES:
-- Use the FULL range of scores (0-100). Most websites should score between 30-70.
-- A score of 80+ means EXCEPTIONAL - reserved for top 5% of sites
-- A score of 70-79 means GOOD - solid but has clear room for improvement  
-- A score of 50-69 means AVERAGE - significant issues that hurt conversions
-- A score of 30-49 means POOR - major problems that actively repel prospects
-- A score below 30 means FAILING - fundamentally broken or unprofessional
+YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
 
-BE HARSH. Most small business websites are mediocre at best. Don't grade on a curve. Grade against what a $1M+ prospect would expect.
+Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
 
-Score the website out of 100 based on these criteria:
+SCORING GUIDE:
+- 20-25: Excellent - This aspect is genuinely well-executed
+- 15-19: Good - Solid but has room for improvement
+- 10-14: Fair - Noticeable issues that hurt effectiveness
+- 5-9: Poor - Significant problems
+- 0-4: Failing - Fundamentally broken or missing
+
+GRADE SCALE (based on overall score out of 100):
+- 90-100: A
+- 80-89: B
+- 70-79: C
+- 60-69: D
+- Below 60: F
+(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
+
+CATEGORIES TO EVALUATE:
 
 1. CREDIBILITY & TRUST (25 pts)
    - Professional appearance, credentials displayed, firm history
    - Trust signals (certifications, affiliations, SEC/FINRA disclosures)
-   - Does it look like a $1M+ AUM firm or a side hustle?
-   - Deduct heavily if: no credentials shown, stock photos, generic content, looks cheap
+   - Does it look like a legitimate firm or amateur?
 
 2. CLIENT EXPERIENCE (25 pts)
    - Clear value proposition for ideal clients
    - Easy navigation, mobile-friendly design
    - Page load speed and modern functionality
-   - Deduct heavily if: confusing navigation, outdated design, slow loading, cluttered
 
 3. DIFFERENTIATION (25 pts)
-   - What makes this advisor different from 10,000 others?
+   - What makes this advisor different from competitors?
    - Niche/specialty clearly communicated?
    - Unique perspective or approach visible?
-   - Deduct heavily if: generic messaging, no clear niche, sounds like every other advisor
 
 4. CONVERSION PATH (25 pts)
    - Clear call-to-action for qualified prospects
    - Easy appointment booking or contact method
    - Lead capture for prospects not ready to talk yet
-   - Deduct heavily if: no clear CTA, buried contact info, no lead magnet
 
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
 {
-    "overall_score": 52,
-    "grade": "D+",
-    "summary": "One sentence positioning statement about the site's current state",
+    "overall_score": [SUM OF FOUR CATEGORY SCORES],
+    "grade": "[LETTER GRADE BASED ON SCORE]",
+    "summary": "[One sentence about the site's current state]",
     "categories": {
         "credibility_trust": {
-            "score": 14,
-            "findings": "What's working and what's missing - be specific and critical",
-            "opportunity": "What implementing this properly could mean for their practice"
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What improving this could mean for their practice]"
         },
         "client_experience": {
-            "score": 15,
-            "findings": "Specific observations about UX, speed, mobile - be critical",
-            "opportunity": "Impact on prospect engagement and bounce rate"
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Impact on prospect engagement]"
         },
         "differentiation": {
-            "score": 10,
-            "findings": "How well they stand out (or don't) from competitors - be honest",
-            "opportunity": "What clear positioning could do for attracting ideal clients"
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[What clear positioning could do for them]"
         },
         "conversion_path": {
-            "score": 13,
-            "findings": "How easy/hard it is for a prospect to take action",
-            "opportunity": "Potential increase in consultation requests"
+            "score": [0-25],
+            "findings": "[What you actually observe - be specific]",
+            "opportunity": "[Potential improvement in conversions]"
         }
     },
     "strategic_recommendations": [
         {
             "priority": "HIGH",
-            "issue": "Specific issue identified",
-            "impact": "How this affects their ability to attract high-value clients",
-            "recommendation": "Actionable suggestion framed as strategic advice"
+            "issue": "[Most important issue you identified]",
+            "impact": "[How this affects their ability to attract clients]",
+            "recommendation": "[Actionable suggestion]"
         },
         {
             "priority": "MEDIUM",
-            "issue": "Second issue",
-            "impact": "Business impact",
-            "recommendation": "Strategic suggestion"
+            "issue": "[Second issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
         },
         {
             "priority": "MEDIUM",
-            "issue": "Third issue",
-            "impact": "Business impact",
-            "recommendation": "Strategic suggestion"
+            "issue": "[Third issue]",
+            "impact": "[Business impact]",
+            "recommendation": "[Actionable suggestion]"
         }
     ],
-    "competitive_insight": "One paragraph comparing this site's positioning to what top-performing advisory firms typically do. Frame as 'firms that consistently attract $500K+ clients tend to...' - educational, not condescending.",
-    "bottom_line": "2-3 sentences summarizing the site's current effectiveness at converting high-value prospects, framed as opportunity rather than criticism. End with a forward-looking statement."
+    "competitive_insight": "[One paragraph comparing this site to what top-performing advisory firms typically do. Be educational, not condescending.]",
+    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
 }"""
 
 PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
