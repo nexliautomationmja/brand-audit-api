@@ -29,13 +29,22 @@ GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 def get_grading_prompt(firm_type=None):
     """Get the appropriate grading prompt based on firm type"""
     
-    base_prompt = """You are a brutally honest website and brand auditor for financial professionals. Score this website out of 100 based on:
+    base_prompt = """You are a brutally honest website and brand auditor for financial professionals. Analyze this website screenshot and score it out of 100 based on these four categories:
 
-1. FIRST IMPRESSION (20 pts) - Clear headline, value proposition, trust at first glance
-2. VISUAL DESIGN (20 pts) - Logo, colors, typography, modern aesthetic  
-3. MOBILE & SPEED (20 pts) - Responsive, clean, fast-loading design
-4. USER EXPERIENCE (20 pts) - Navigation, clear CTA, trust signals
-5. LEAD CAPTURE (20 pts) - Contact options, booking, lead magnets"""
+1. CREDIBILITY & TRUST (25 pts) - Does it look like a legitimate firm? Professional photos, credentials displayed, testimonials, trust badges, compliance disclosures
+2. CLIENT EXPERIENCE (25 pts) - Mobile responsiveness, page speed indicators, navigation clarity, readability, modern design
+3. DIFFERENTIATION (25 pts) - Clear value proposition, unique positioning, target client defined, what makes them different from 10,000 other advisors
+4. CONVERSION PATH (25 pts) - Clear CTAs, easy contact options, booking capability, lead capture forms, next steps obvious
+
+SCORING GUIDELINES - BE HARSH:
+- 80-100: Exceptional (rare - only for truly outstanding sites)
+- 70-79: Good (above average, minor improvements needed)
+- 60-69: Average (meets basic standards but nothing special)
+- 50-59: Below Average (significant issues hurting conversions)
+- 40-49: Poor (major problems, likely losing clients)
+- Below 40: Critical (site is actively hurting the business)
+
+Most financial advisor websites should score between 45-65. A score above 70 should be RARE."""
 
     if firm_type == "CPA Firm":
         base_prompt += """
@@ -72,54 +81,132 @@ IMPORTANT: This is a FINANCIAL ADVISOR website. Apply these industry-specific cr
 
     base_prompt += """
 
-Be harsh but fair. A score of 70+ should be RARE and only for truly excellent sites.
-Most financial professional websites should score between 45-65.
-
 Return ONLY valid JSON in this exact format:
 {
-    "overall_score": 58,
-    "grade": "D+",
+    "overall_score": 52,
+    "grade": "D",
     "categories": {
-        "first_impression": {"score": 12, "verdict": "One line verdict"},
-        "visual_design": {"score": 11, "verdict": "One line verdict"},
-        "mobile_speed": {"score": 13, "verdict": "One line verdict"},
-        "user_experience": {"score": 12, "verdict": "One line verdict"},
-        "lead_capture": {"score": 10, "verdict": "One line verdict"}
+        "credibility_trust": {
+            "score": 14,
+            "findings": "What you observed about their credibility and trust signals",
+            "opportunity": "Specific improvement they could make"
+        },
+        "client_experience": {
+            "score": 12,
+            "findings": "What you observed about UX, mobile, speed",
+            "opportunity": "Specific improvement they could make"
+        },
+        "differentiation": {
+            "score": 11,
+            "findings": "What you observed about their unique positioning",
+            "opportunity": "Specific improvement they could make"
+        },
+        "conversion_path": {
+            "score": 15,
+            "findings": "What you observed about CTAs and lead capture",
+            "opportunity": "Specific improvement they could make"
+        }
     },
-    "top_problems": [
-        "First major problem and why it costs them clients",
-        "Second problem and business impact",
-        "Third problem and what it signals"
+    "recommendations": [
+        {
+            "priority": "HIGH",
+            "issue": "The main problem",
+            "impact": "How this affects their business",
+            "recommendation": "What they should do"
+        },
+        {
+            "priority": "HIGH",
+            "issue": "Second problem",
+            "impact": "Business impact",
+            "recommendation": "What they should do"
+        },
+        {
+            "priority": "MEDIUM",
+            "issue": "Third problem",
+            "impact": "Business impact",
+            "recommendation": "What they should do"
+        }
     ],
-    "summary": "One sentence summary of the site's main weakness",
-    "bottom_line": "2-3 sentence brutally honest summary"
+    "competitive_insight": "One paragraph comparing this site to what top-performing firms in their space do. Frame as 'firms that consistently attract high-value clients tend to...' - educational, not condescending.",
+    "summary": "One sentence summary of the site's biggest weakness",
+    "bottom_line": "2-3 sentences summarizing the site's current effectiveness at converting high-value prospects, framed as opportunity rather than criticism. End with a forward-looking statement."
 }"""
     
     return base_prompt
 
 
-PDF_PROMPT = """Create a beautiful, professional HTML document for a website audit report.
+PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
 
-The document should:
-1. Use the Nexli brand colors (blue gradient: #2563EB to #06B6D4)
-2. Have a clean, modern design with plenty of white space
-3. Include the Nexli logo at the top (use text "NEXLI" styled as a logo)
-4. Display the overall score prominently with a circular progress indicator
-5. Show each category with its score and verdict
-6. List the top problems clearly
-7. Include the bottom line assessment
-8. Have a call-to-action button at the bottom linking to https://www.nexli.net/#book
-
-Use inline CSS for all styling. Make it look premium and professional.
-
-Here is the audit data:
 {audit_data}
 
-Website analyzed: {website_url}
-Client name: {business_name}
-Assessment date: {assessment_date}
+Website URL: {website_url}
+Firm/Advisor Name: {business_name}
+Assessment Date: {assessment_date}
 
-Return ONLY the complete HTML document, no markdown code blocks."""
+CRITICAL - Use this exact SVG for the Nexli logo (the Breakthrough mark with wordmark):
+<svg viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#2563EB"/>
+            <stop offset="100%" style="stop-color:#06B6D4"/>
+        </linearGradient>
+    </defs>
+    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
+    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad)"/>
+    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
+    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="#0A1628">Nexli</text>
+</svg>
+
+Design requirements:
+- Use Nexli branding: Primary blue #2563EB, Cyan accent #06B6D4, Dark #0A1628, Light gray #F8FAFC
+- Clean, sophisticated design appropriate for financial professionals
+- Professional typography (system fonts - use font-weight strategically)
+- Executive summary style - scannable with clear hierarchy
+
+Structure:
+1. HEADER
+   - Wrap the Nexli SVG logo in: <a href="https://www.nexli.net/#book" target="_blank" style="text-decoration:none;">...</a>
+   - Make logo roughly 140px wide
+   - "Digital Presence Assessment" as subtitle below logo
+   - "Prepared for [business_name]"
+   - Use the exact Assessment Date provided above (do NOT generate your own date)
+
+2. EXECUTIVE SUMMARY
+   - Overall score displayed prominently in a circle/badge (color-coded: green 80+, blue 60-79, orange 40-59, red below 40)
+   - Grade letter next to it
+   - The "summary" field as a one-liner
+   - The "bottom_line" as a 2-3 sentence overview
+
+3. ASSESSMENT BREAKDOWN
+   - Four category cards in a 2x2 grid (or stacked on mobile)
+   - Each card shows: Category name, Score as progress bar (out of 25), Findings, Opportunity
+   - Use subtle background colors to differentiate
+
+4. STRATEGIC RECOMMENDATIONS
+   - List the 3 recommendations with priority badges (HIGH = red/orange, MEDIUM = blue)
+   - Each shows: Issue, Impact, Recommendation
+   - Frame as "opportunities" not "problems"
+
+5. COMPETITIVE INSIGHT
+   - Styled as a quote/callout box
+   - The "competitive_insight" paragraph
+
+6. NEXT STEPS CTA - THIS SECTION IS REQUIRED
+   - Professional call-to-action section with a light blue (#EFF6FF) background
+   - Include the clickable Nexli logo SVG wrapped in <a href="https://www.nexli.net/#book" target="_blank">
+   - Headline: "Ready to Elevate Your Digital Presence?"
+   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
+   - MUST include this EXACT button code (copy exactly as shown):
+     <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:16px 32px; border-radius:8px; text-decoration:none; font-weight:600; font-size:18px; margin:20px 0;">Book Your Strategy Call</a>
+   - Below button: "No obligation • 30-minute consultation • Tailored recommendations" (small, gray text, centered)
+
+7. FOOTER
+   - Small clickable Nexli logo wrapped in <a href="https://www.nexli.net/#book" target="_blank">
+   - "Assessment powered by Nexli"
+   - "Helping financial advisors attract and convert high-value clients"
+   - Small disclaimer: "This assessment is based on automated analysis and publicly visible website elements."
+
+Make it print-friendly with proper margins. The tone should feel like a report from a peer consultant, not a criticism from a vendor. Return ONLY the HTML, no markdown code fences."""
 
 
 def take_screenshot(url):
