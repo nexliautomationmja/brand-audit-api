@@ -539,6 +539,11 @@ def generate_html_template(audit_data, website_url, business_name, assessment_da
             </div>
         </section>
         
+        <!-- First Impression Notice -->
+        <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px 24px; margin: 0 40px 0 40px;">
+            <p style="margin: 0; font-size: 14px; color: #92400E;"><strong>Why "Above the Fold" Matters:</strong> This assessment evaluates what visitors see in the first 3 seconds—before scrolling. Research shows most users decide to stay or leave within this window. If key trust signals, value propositions, or calls-to-action are buried below the fold, visitors may never see them. The best-performing websites put their most important content front and center.</p>
+        </div>
+        
         <!-- Assessment Breakdown -->
         <section class="breakdown">
             <h2>Assessment Breakdown</h2>
