@@ -37,12 +37,18 @@ def get_grading_prompt(firm_type=None):
 4. CONVERSION PATH (25 pts) - Clear CTAs, easy contact options, booking capability, lead capture forms, next steps obvious
 
 SCORING GUIDELINES - BE HARSH:
-- 80-100: Exceptional (rare - only for truly outstanding sites)
-- 70-79: Good (above average, minor improvements needed)
-- 60-69: Average (meets basic standards but nothing special)
-- 50-59: Below Average (significant issues hurting conversions)
-- 40-49: Poor (major problems, likely losing clients)
-- Below 40: Critical (site is actively hurting the business)
+- 90-100: A (Exceptional - rare, truly outstanding)
+- 80-89: B (Good - above average, minor improvements needed)
+- 70-79: C (Average - meets basic standards but nothing special)
+- 60-69: D (Below Average - significant issues hurting conversions)
+- Below 60: F (Failing - major problems, site is hurting the business)
+
+IMPORTANT: The letter grade MUST match the score:
+- Score 52 = Grade F
+- Score 67 = Grade D
+- Score 73 = Grade C
+- Score 85 = Grade B
+- Score 92 = Grade A
 
 Most financial advisor websites should score between 45-65. A score above 70 should be RARE."""
 
@@ -84,7 +90,7 @@ IMPORTANT: This is a FINANCIAL ADVISOR website. Apply these industry-specific cr
 Return ONLY valid JSON in this exact format:
 {
     "overall_score": 52,
-    "grade": "D",
+    "grade": "F",
     "categories": {
         "credibility_trust": {
             "score": 14,
@@ -135,78 +141,499 @@ Return ONLY valid JSON in this exact format:
     return base_prompt
 
 
-PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
+def get_score_color(score):
+    """Return the appropriate gradient colors based on score"""
+    if score >= 80:
+        return "#10B981", "#059669"  # Green
+    elif score >= 60:
+        return "#3B82F6", "#2563EB"  # Blue
+    elif score >= 40:
+        return "#F97316", "#EA580C"  # Orange
+    else:
+        return "#EF4444", "#DC2626"  # Red
 
-{audit_data}
 
-Website URL: {website_url}
-Firm/Advisor Name: {business_name}
-Assessment Date: {assessment_date}
-
-CRITICAL - Use this exact SVG for the Nexli logo (the Breakthrough mark with wordmark):
-<svg viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#2563EB"/>
-            <stop offset="100%" style="stop-color:#06B6D4"/>
-        </linearGradient>
-    </defs>
-    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
-    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad)"/>
-    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
-    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="#0A1628">Nexli</text>
-</svg>
-
-Design requirements:
-- Use Nexli branding: Primary blue #2563EB, Cyan accent #06B6D4, Dark #0A1628, Light gray #F8FAFC
-- Clean, sophisticated design appropriate for financial professionals
-- Professional typography (system fonts - use font-weight strategically)
-- Executive summary style - scannable with clear hierarchy
-
-Structure:
-1. HEADER
-   - Wrap the Nexli SVG logo in: <a href="https://www.nexli.net/#book" target="_blank" style="text-decoration:none;">...</a>
-   - Make logo roughly 140px wide
-   - "Digital Presence Assessment" as subtitle below logo
-   - "Prepared for [business_name]"
-   - Use the exact Assessment Date provided above (do NOT generate your own date)
-
-2. EXECUTIVE SUMMARY
-   - Overall score displayed prominently in a circle/badge (color-coded: green 80+, blue 60-79, orange 40-59, red below 40)
-   - Grade letter next to it
-   - The "summary" field as a one-liner
-   - The "bottom_line" as a 2-3 sentence overview
-
-3. ASSESSMENT BREAKDOWN
-   - Four category cards in a 2x2 grid (or stacked on mobile)
-   - Each card shows: Category name, Score as progress bar (out of 25), Findings, Opportunity
-   - Use subtle background colors to differentiate
-
-4. STRATEGIC RECOMMENDATIONS
-   - List the 3 recommendations with priority badges (HIGH = red/orange, MEDIUM = blue)
-   - Each shows: Issue, Impact, Recommendation
-   - Frame as "opportunities" not "problems"
-
-5. COMPETITIVE INSIGHT
-   - Styled as a quote/callout box
-   - The "competitive_insight" paragraph
-
-6. NEXT STEPS CTA - THIS SECTION IS REQUIRED
-   - Professional call-to-action section with a light blue (#EFF6FF) background
-   - Include the clickable Nexli logo SVG wrapped in <a href="https://www.nexli.net/#book" target="_blank">
-   - Headline: "Ready to Elevate Your Digital Presence?"
-   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
-   - MUST include this EXACT button code (copy exactly as shown):
-     <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:16px 32px; border-radius:8px; text-decoration:none; font-weight:600; font-size:18px; margin:20px 0;">Book Your Strategy Call</a>
-   - Below button: "No obligation • 30-minute consultation • Tailored recommendations" (small, gray text, centered)
-
-7. FOOTER
-   - Small clickable Nexli logo wrapped in <a href="https://www.nexli.net/#book" target="_blank">
-   - "Assessment powered by Nexli"
-   - "Helping financial advisors attract and convert high-value clients"
-   - Small disclaimer: "This assessment is based on automated analysis and publicly visible website elements."
-
-Make it print-friendly with proper margins. The tone should feel like a report from a peer consultant, not a criticism from a vendor. Return ONLY the HTML, no markdown code fences."""
+def generate_html_template(audit_data, website_url, business_name, assessment_date):
+    """Generate HTML report using hardcoded template with exact approved design"""
+    
+    score = audit_data.get('overall_score', 0)
+    grade = audit_data.get('grade', 'N/A')
+    summary = audit_data.get('summary', '')
+    bottom_line = audit_data.get('bottom_line', '')
+    competitive_insight = audit_data.get('competitive_insight', '')
+    
+    categories = audit_data.get('categories', {})
+    cred = categories.get('credibility_trust', {})
+    exp = categories.get('client_experience', {})
+    diff = categories.get('differentiation', {})
+    conv = categories.get('conversion_path', {})
+    
+    recommendations = audit_data.get('recommendations', [])
+    
+    score_color1, score_color2 = get_score_color(score)
+    
+    # Build recommendations HTML
+    recs_html = ""
+    for rec in recommendations[:3]:
+        priority = rec.get('priority', 'MEDIUM').upper()
+        priority_class = "high" if priority == "HIGH" else "medium"
+        badge_bg = "#FEE2E2" if priority == "HIGH" else "#FEF3C7"
+        badge_color = "#DC2626" if priority == "HIGH" else "#D97706"
+        border_color = "#EF4444" if priority == "HIGH" else "#F59E0B"
+        
+        recs_html += f'''
+            <div class="recommendation" style="border-left-color: {border_color};">
+                <span class="priority-badge" style="background: {badge_bg}; color: {badge_color};">{priority} Priority</span>
+                <h3>{rec.get('issue', '')}</h3>
+                <p><strong>Impact:</strong> {rec.get('impact', '')}</p>
+                <p class="action">→ {rec.get('recommendation', '')}</p>
+            </div>
+        '''
+    
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Presence Assessment - {business_name}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8FAFC;
+            color: #0A1628;
+            line-height: 1.6;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }}
+        
+        /* Header */
+        .header {{
+            background: linear-gradient(135deg, #0A1628 0%, #1a2942 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }}
+        .header a {{
+            text-decoration: none;
+        }}
+        .logo {{
+            margin-bottom: 20px;
+            display: inline-block;
+        }}
+        .header h1 {{
+            font-size: 28px;
+            font-weight: 300;
+            margin-bottom: 8px;
+            color: white;
+        }}
+        .header .subtitle {{
+            font-size: 18px;
+            opacity: 0.9;
+        }}
+        .header .meta {{
+            margin-top: 16px;
+            font-size: 14px;
+            opacity: 0.7;
+        }}
+        
+        /* Executive Summary */
+        .executive-summary {{
+            padding: 40px;
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            border-bottom: 1px solid #E2E8F0;
+        }}
+        .score-circle {{
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, {score_color1} 0%, {score_color2} 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+        }}
+        .score-circle .score {{
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+        }}
+        .score-circle .grade {{
+            font-size: 24px;
+            font-weight: 600;
+            opacity: 0.9;
+        }}
+        .summary-text h2 {{
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748B;
+            margin-bottom: 12px;
+        }}
+        .summary-text .summary {{
+            font-size: 18px;
+            font-weight: 600;
+            color: #0A1628;
+            margin-bottom: 16px;
+        }}
+        .summary-text .bottom-line {{
+            font-size: 15px;
+            color: #475569;
+        }}
+        
+        /* Assessment Breakdown */
+        .breakdown {{
+            padding: 40px;
+            background: #F8FAFC;
+        }}
+        .breakdown h2 {{
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #0A1628;
+        }}
+        .category-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }}
+        .category-card {{
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }}
+        .category-card h3 {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A1628;
+            margin-bottom: 12px;
+        }}
+        .score-bar {{
+            height: 8px;
+            background: #E2E8F0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }}
+        .score-bar-fill {{
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #2563EB, #06B6D4);
+        }}
+        .score-label {{
+            font-size: 14px;
+            font-weight: 600;
+            color: #2563EB;
+            margin-bottom: 12px;
+        }}
+        .category-card h4 {{
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748B;
+            margin-bottom: 4px;
+        }}
+        .category-card p {{
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 12px;
+        }}
+        
+        /* Recommendations */
+        .recommendations {{
+            padding: 40px;
+            border-bottom: 1px solid #E2E8F0;
+        }}
+        .recommendations h2 {{
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #0A1628;
+        }}
+        .recommendation {{
+            background: #F8FAFC;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid #2563EB;
+        }}
+        .priority-badge {{
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }}
+        .recommendation h3 {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #0A1628;
+            margin-bottom: 8px;
+        }}
+        .recommendation p {{
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 8px;
+        }}
+        .recommendation .action {{
+            font-size: 14px;
+            color: #2563EB;
+            font-weight: 500;
+        }}
+        
+        /* Competitive Insight */
+        .competitive-insight {{
+            padding: 40px;
+            background: #EFF6FF;
+            border-left: 4px solid #2563EB;
+            margin: 0 40px 40px 40px;
+            border-radius: 0 12px 12px 0;
+        }}
+        .competitive-insight h2 {{
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E40AF;
+            margin-bottom: 12px;
+        }}
+        .competitive-insight p {{
+            font-size: 15px;
+            color: #1E3A8A;
+            font-style: italic;
+        }}
+        
+        /* CTA Section */
+        .cta-section {{
+            background: #EFF6FF;
+            padding: 60px 40px;
+            text-align: center;
+        }}
+        .cta-section .logo {{
+            margin-bottom: 24px;
+        }}
+        .cta-section h2 {{
+            font-size: 28px;
+            font-weight: 700;
+            color: #0A1628;
+            margin-bottom: 12px;
+        }}
+        .cta-section .subtext {{
+            font-size: 16px;
+            color: #475569;
+            margin-bottom: 24px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }}
+        .cta-button {{
+            display: inline-block;
+            background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            margin: 20px 0;
+        }}
+        .cta-meta {{
+            font-size: 14px;
+            color: #64748B;
+            margin-top: 16px;
+        }}
+        
+        /* Footer */
+        .footer {{
+            background: #0A1628;
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }}
+        .footer a {{
+            text-decoration: none;
+        }}
+        .footer .logo {{
+            margin-bottom: 16px;
+        }}
+        .footer p {{
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }}
+        .footer .disclaimer {{
+            font-size: 12px;
+            opacity: 0.5;
+            margin-top: 20px;
+        }}
+        
+        @media (max-width: 600px) {{
+            .category-grid {{
+                grid-template-columns: 1fr;
+            }}
+            .executive-summary {{
+                flex-direction: column;
+                text-align: center;
+            }}
+        }}
+        
+        @media print {{
+            .container {{
+                box-shadow: none;
+            }}
+            .cta-button {{
+                background: #2563EB !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="https://www.nexli.net/#book" target="_blank" class="logo">
+                <svg viewBox="0 0 140 48" width="140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#2563EB"/>
+                            <stop offset="100%" style="stop-color:#06B6D4"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
+                    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad)"/>
+                    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
+                    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="white">Nexli</text>
+                </svg>
+            </a>
+            <h1>Digital Presence Assessment</h1>
+            <p class="subtitle">Prepared for <strong>{business_name}</strong></p>
+            <p class="meta"><strong>Website:</strong> {website_url} &nbsp;|&nbsp; <strong>Assessment Date:</strong> {assessment_date}</p>
+        </header>
+        
+        <!-- Executive Summary -->
+        <section class="executive-summary">
+            <div class="score-circle">
+                <span class="score">{score}</span>
+                <span class="grade">{grade}</span>
+            </div>
+            <div class="summary-text">
+                <h2>Executive Summary</h2>
+                <p class="summary">{summary}</p>
+                <p class="bottom-line">{bottom_line}</p>
+            </div>
+        </section>
+        
+        <!-- Assessment Breakdown -->
+        <section class="breakdown">
+            <h2>Assessment Breakdown</h2>
+            <div class="category-grid">
+                <div class="category-card">
+                    <h3>Credibility & Trust</h3>
+                    <div class="score-bar"><div class="score-bar-fill" style="width: {cred.get('score', 0) * 4}%;"></div></div>
+                    <p class="score-label">{cred.get('score', 0)}/25</p>
+                    <h4>Current State</h4>
+                    <p>{cred.get('findings', '')}</p>
+                    <h4>Opportunity</h4>
+                    <p>{cred.get('opportunity', '')}</p>
+                </div>
+                <div class="category-card">
+                    <h3>Client Experience</h3>
+                    <div class="score-bar"><div class="score-bar-fill" style="width: {exp.get('score', 0) * 4}%;"></div></div>
+                    <p class="score-label">{exp.get('score', 0)}/25</p>
+                    <h4>Current State</h4>
+                    <p>{exp.get('findings', '')}</p>
+                    <h4>Opportunity</h4>
+                    <p>{exp.get('opportunity', '')}</p>
+                </div>
+                <div class="category-card">
+                    <h3>Differentiation</h3>
+                    <div class="score-bar"><div class="score-bar-fill" style="width: {diff.get('score', 0) * 4}%;"></div></div>
+                    <p class="score-label">{diff.get('score', 0)}/25</p>
+                    <h4>Current State</h4>
+                    <p>{diff.get('findings', '')}</p>
+                    <h4>Opportunity</h4>
+                    <p>{diff.get('opportunity', '')}</p>
+                </div>
+                <div class="category-card">
+                    <h3>Conversion Path</h3>
+                    <div class="score-bar"><div class="score-bar-fill" style="width: {conv.get('score', 0) * 4}%;"></div></div>
+                    <p class="score-label">{conv.get('score', 0)}/25</p>
+                    <h4>Current State</h4>
+                    <p>{conv.get('findings', '')}</p>
+                    <h4>Opportunity</h4>
+                    <p>{conv.get('opportunity', '')}</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Strategic Recommendations -->
+        <section class="recommendations">
+            <h2>Strategic Recommendations</h2>
+            {recs_html}
+        </section>
+        
+        <!-- Competitive Insight -->
+        <div class="competitive-insight">
+            <h2>Competitive Insight</h2>
+            <p>{competitive_insight}</p>
+        </div>
+        
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <a href="https://www.nexli.net/#book" target="_blank" class="logo">
+                <svg viewBox="0 0 140 48" width="140" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#2563EB"/>
+                            <stop offset="100%" style="stop-color:#06B6D4"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
+                    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad2)"/>
+                    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
+                    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="#0A1628">Nexli</text>
+                </svg>
+            </a>
+            <h2>Ready to Elevate Your Digital Presence?</h2>
+            <p class="subtext">Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals.</p>
+            <a href="https://www.nexli.net/#book" target="_blank" class="cta-button">Book Your Strategy Call</a>
+            <p class="cta-meta">No obligation • 30-minute consultation • Tailored recommendations</p>
+        </section>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <a href="https://www.nexli.net/#book" target="_blank" class="logo">
+                <svg viewBox="0 0 48 48" width="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="rgba(255,255,255,0.5)"/>
+                    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="rgba(255,255,255,0.75)"/>
+                    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="white"/>
+                </svg>
+            </a>
+            <p>Assessment powered by Nexli</p>
+            <p>Helping financial advisors attract and convert high-value clients</p>
+            <p class="disclaimer">This assessment is based on automated analysis and publicly visible website elements.</p>
+        </footer>
+    </div>
+</body>
+</html>'''
+    
+    return html
 
 
 def take_screenshot(url):
@@ -263,42 +690,6 @@ def analyze_with_claude(screenshot_base64, firm_type=None):
                     "text": get_grading_prompt(firm_type)
                 }
             ]
-        }]
-    }
-    
-    response = requests.post(url, json=payload, headers=headers, timeout=90)
-    
-    if response.status_code != 200:
-        raise Exception(f"Claude failed: {response.status_code} - {response.text}")
-    
-    result = response.json()
-    return result['content'][0]['text']
-
-
-def generate_html_report(audit_data, website_url, business_name=None):
-    """Generate branded HTML report using Claude"""
-    url = "https://api.anthropic.com/v1/messages"
-    
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01"
-    }
-    
-    # Get current date for the assessment
-    assessment_date = datetime.now().strftime("%B %d, %Y")
-    
-    payload = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": 4096,
-        "messages": [{
-            "role": "user",
-            "content": PDF_PROMPT.format(
-                audit_data=audit_data,
-                website_url=website_url,
-                business_name=business_name or "the business",
-                assessment_date=assessment_date
-            )
         }]
     }
     
@@ -369,7 +760,7 @@ def process_audit_async(contact_id, contact_email, contact_name, website_url, fi
         print("Taking screenshot...")
         screenshot = take_screenshot(website_url)
         
-        # Step 2: Claude analysis (instead of Gemini)
+        # Step 2: Claude analysis
         print("Analyzing with Claude...")
         audit_json = analyze_with_claude(screenshot, firm_type)
         
@@ -386,17 +777,15 @@ def process_audit_async(contact_id, contact_email, contact_name, website_url, fi
         # Parse to validate JSON
         audit_data = json.loads(audit_json)
         
-        # Step 3: Generate branded HTML report with Claude
+        # Step 3: Generate HTML report using hardcoded template (NOT Claude)
         print("Generating HTML report...")
-        html_report = generate_html_report(audit_json, website_url, contact_name)
-        
-        # Clean up HTML if needed
-        if '```html' in html_report:
-            html_report = html_report.split('```html')[1].split('```')[0]
-        elif '```' in html_report:
-            parts = html_report.split('```')
-            if len(parts) >= 2:
-                html_report = parts[1]
+        assessment_date = datetime.now().strftime("%B %d, %Y")
+        html_report = generate_html_template(
+            audit_data=audit_data,
+            website_url=website_url,
+            business_name=contact_name or "Your Firm",
+            assessment_date=assessment_date
+        )
         
         # Step 4: Upload to R2
         print("Uploading to R2...")
@@ -438,12 +827,17 @@ def audit_website():
     try:
         data = request.json
         
+        # Log incoming data for debugging
+        print(f"Received data: {json.dumps(data, indent=2)}")
+        
         # Extract fields (handle various field names)
         contact_id = data.get('id') or data.get('contact_id') or data.get('contactId')
         contact_email = data.get('email') or data.get('contact_email')
         contact_name = data.get('name') or data.get('contact_name') or data.get('firstName')
         website_url = data.get('website_url') or data.get('websiteUrl') or data.get('website') or data.get('url')
         firm_type = data.get('firm_type') or data.get('firmType')
+        
+        print(f"Parsed - Name: {contact_name}, Email: {contact_email}, URL: {website_url}, Firm Type: {firm_type}")
         
         if not website_url:
             return jsonify({
