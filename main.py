@@ -13,7 +13,6 @@ app = Flask(__name__)
 
 # API Keys
 SCREENSHOT_API_KEY = os.environ.get('SCREENSHOT_API_KEY')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 CLAUDE_API_KEY = os.environ.get('CLAUDE_API_KEY')
 
 # R2 Config
@@ -26,460 +25,181 @@ R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL')
 # GHL Webhook URL for sending results back
 GHL_WEBHOOK_URL = os.environ.get('GHL_WEBHOOK_URL')
 
-GRADING_PROMPTS = {
-    "wealth_management": """You are a digital marketing strategist specializing in wealth management firms. Analyze this website from the perspective of a high-net-worth prospect ($500K+ investable assets) evaluating whether to trust this advisor with their wealth.
 
-YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
+def get_grading_prompt(firm_type=None):
+    """Get the appropriate grading prompt based on firm type"""
+    
+    base_prompt = """You are a brutally honest website and brand auditor for financial professionals. Score this website out of 100 based on:
 
-Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
+1. FIRST IMPRESSION (20 pts) - Clear headline, value proposition, trust at first glance
+2. VISUAL DESIGN (20 pts) - Logo, colors, typography, modern aesthetic  
+3. MOBILE & SPEED (20 pts) - Responsive, clean, fast-loading design
+4. USER EXPERIENCE (20 pts) - Navigation, clear CTA, trust signals
+5. LEAD CAPTURE (20 pts) - Contact options, booking, lead magnets"""
 
-SCORING GUIDE:
-- 20-25: Excellent - This aspect is genuinely well-executed
-- 15-19: Good - Solid but has room for improvement
-- 10-14: Fair - Noticeable issues that hurt effectiveness
-- 5-9: Poor - Significant problems
-- 0-4: Failing - Fundamentally broken or missing
+    if firm_type == "CPA Firm":
+        base_prompt += """
 
-GRADE SCALE (based on overall score out of 100):
-- 90-100: A
-- 80-89: B
-- 70-79: C
-- 60-69: D
-- Below 60: F
-(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
+IMPORTANT: This is a CPA FIRM website. Apply these industry-specific criteria:
+- Tax/accounting services should be clearly listed
+- Credentials (CPA, EA) should be prominently displayed
+- Client portal access is expected
+- Tax deadline reminders or resources add value
+- Trust signals like BBB, professional associations matter
+- Testimonials from business clients are valuable"""
 
-CATEGORIES TO EVALUATE FOR WEALTH MANAGEMENT:
+    elif firm_type == "Wealth Management":
+        base_prompt += """
 
-1. CREDIBILITY & TRUST (25 pts)
-   - Professional credentials displayed (CFP, CFA, CIMA, ChFC)?
-   - Fiduciary status clearly stated?
-   - SEC/FINRA disclosures accessible?
-   - Firm history, team bios, AUM indicators?
-   - Does it look like a legitimate wealth management firm?
+IMPORTANT: This is a WEALTH MANAGEMENT firm website. Apply these industry-specific criteria:
+- Investment philosophy should be clear
+- AUM or client minimums help qualify visitors
+- Fiduciary status should be prominently stated
+- SEC/FINRA disclosures must be present
+- Team credentials (CFP, CFA) should be visible
+- Client success stories or case studies add credibility"""
 
-2. CLIENT EXPERIENCE (25 pts)
-   - Clear value proposition for high-net-worth clients?
-   - Investment philosophy communicated?
-   - Easy navigation, mobile-friendly, modern design?
-   - Professional imagery (not cheap stock photos)?
+    elif firm_type == "Financial Advisor":
+        base_prompt += """
 
-3. DIFFERENTIATION (25 pts)
-   - What makes this firm different from other RIAs?
-   - Target client clearly defined (executives, business owners, retirees)?
-   - Specialized services (tax planning, estate, equity compensation)?
-   - Unique investment approach or philosophy?
+IMPORTANT: This is a FINANCIAL ADVISOR website. Apply these industry-specific criteria:
+- Services offered should be clearly defined
+- Fee structure transparency is valuable
+- Credentials (CFP, ChFC) should be displayed
+- Target client type should be evident
+- Compliance disclosures are required
+- Personal brand/story helps build trust"""
 
-4. CONVERSION PATH (25 pts)
-   - Clear call-to-action for qualified prospects?
-   - Easy way to schedule a consultation?
-   - Lead capture for prospects not ready to talk?
-   - Fee transparency or "what to expect" information?
+    base_prompt += """
 
-Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
+Be harsh but fair. A score of 70+ should be RARE and only for truly excellent sites.
+Most financial professional websites should score between 45-65.
+
+Return ONLY valid JSON in this exact format:
 {
-    "overall_score": [SUM OF FOUR CATEGORY SCORES],
-    "grade": "[LETTER GRADE BASED ON SCORE]",
-    "summary": "[One sentence about the site's current state]",
+    "overall_score": 58,
+    "grade": "D+",
     "categories": {
-        "credibility_trust": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What improving this could mean for their practice]"
-        },
-        "client_experience": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Impact on prospect engagement]"
-        },
-        "differentiation": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What clear positioning could do for them]"
-        },
-        "conversion_path": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Potential improvement in conversions]"
-        }
+        "first_impression": {"score": 12, "verdict": "One line verdict"},
+        "visual_design": {"score": 11, "verdict": "One line verdict"},
+        "mobile_speed": {"score": 13, "verdict": "One line verdict"},
+        "user_experience": {"score": 12, "verdict": "One line verdict"},
+        "lead_capture": {"score": 10, "verdict": "One line verdict"}
     },
-    "strategic_recommendations": [
-        {
-            "priority": "HIGH",
-            "issue": "[Most important issue you identified]",
-            "impact": "[How this affects their ability to attract HNW clients]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Second issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Third issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        }
+    "top_problems": [
+        "First major problem and why it costs them clients",
+        "Second problem and business impact",
+        "Third problem and what it signals"
     ],
-    "competitive_insight": "[One paragraph comparing this site to what top-performing wealth management firms typically do.]",
-    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
-}""",
-
-    "cpa": """You are a digital marketing strategist specializing in CPA and accounting firms. Analyze this website from the perspective of a business owner or high-income individual looking for a trusted CPA.
-
-YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
-
-Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
-
-SCORING GUIDE:
-- 20-25: Excellent - This aspect is genuinely well-executed
-- 15-19: Good - Solid but has room for improvement
-- 10-14: Fair - Noticeable issues that hurt effectiveness
-- 5-9: Poor - Significant problems
-- 0-4: Failing - Fundamentally broken or missing
-
-GRADE SCALE (based on overall score out of 100):
-- 90-100: A
-- 80-89: B
-- 70-79: C
-- 60-69: D
-- Below 60: F
-(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
-
-CATEGORIES TO EVALUATE FOR CPA/ACCOUNTING FIRMS:
-
-1. CREDIBILITY & TRUST (25 pts)
-   - CPA credentials clearly displayed?
-   - State licensure mentioned?
-   - Professional memberships (AICPA, state society)?
-   - Firm history, team qualifications?
-   - Security and confidentiality signals?
-
-2. CLIENT EXPERIENCE (25 pts)
-   - Services clearly listed (tax prep, bookkeeping, advisory, audit)?
-   - Industry specializations shown (real estate, medical, small business)?
-   - Easy navigation, modern design?
-   - Client portal access visible?
-
-3. DIFFERENTIATION (25 pts)
-   - What makes this CPA different from others?
-   - Niche industries or client types served?
-   - Proactive tax planning vs just compliance?
-   - Technology-forward approach?
-
-4. CONVERSION PATH (25 pts)
-   - Clear call-to-action for new clients?
-   - Easy way to request a consultation or quote?
-   - Contact information prominently displayed?
-   - Lead capture for tax season or newsletter?
-
-Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
-{
-    "overall_score": [SUM OF FOUR CATEGORY SCORES],
-    "grade": "[LETTER GRADE BASED ON SCORE]",
-    "summary": "[One sentence about the site's current state]",
-    "categories": {
-        "credibility_trust": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What improving this could mean for their practice]"
-        },
-        "client_experience": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Impact on prospect engagement]"
-        },
-        "differentiation": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What clear positioning could do for them]"
-        },
-        "conversion_path": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Potential improvement in conversions]"
-        }
-    },
-    "strategic_recommendations": [
-        {
-            "priority": "HIGH",
-            "issue": "[Most important issue you identified]",
-            "impact": "[How this affects their ability to attract clients]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Second issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Third issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        }
-    ],
-    "competitive_insight": "[One paragraph comparing this site to what top-performing CPA firms typically do.]",
-    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
-}""",
-
-    "financial_advisor": """You are a digital marketing strategist specializing in financial advisory firms. Analyze this website from the perspective of someone looking for a financial advisor to help with their financial planning needs.
-
-YOUR JOB IS TO BE HONEST - NOT HARSH, NOT GENEROUS. JUST ACCURATE.
-
-Score each category out of 25 points based on what you actually observe. The overall score is the sum of all four categories.
-
-SCORING GUIDE:
-- 20-25: Excellent - This aspect is genuinely well-executed
-- 15-19: Good - Solid but has room for improvement
-- 10-14: Fair - Noticeable issues that hurt effectiveness
-- 5-9: Poor - Significant problems
-- 0-4: Failing - Fundamentally broken or missing
-
-GRADE SCALE (based on overall score out of 100):
-- 90-100: A
-- 80-89: B
-- 70-79: C
-- 60-69: D
-- Below 60: F
-(Add + or - as appropriate, e.g., 85 = B, 78 = C+, 62 = D-)
-
-CATEGORIES TO EVALUATE FOR FINANCIAL ADVISORS:
-
-1. CREDIBILITY & TRUST (25 pts)
-   - Professional credentials displayed (CFP, ChFC, CLU)?
-   - Fiduciary status or fee structure clarity?
-   - Regulatory disclosures accessible?
-   - Team bios and firm background?
-   - Professional appearance?
-
-2. CLIENT EXPERIENCE (25 pts)
-   - Clear explanation of services (retirement, insurance, estate)?
-   - Who they help best (young professionals, families, pre-retirees)?
-   - Easy navigation, mobile-friendly design?
-   - Educational content or resources?
-
-3. DIFFERENTIATION (25 pts)
-   - What makes this advisor different?
-   - Planning philosophy or approach clear?
-   - Target client defined?
-   - Specialized expertise shown?
-
-4. CONVERSION PATH (25 pts)
-   - Clear call-to-action?
-   - Easy way to schedule a meeting?
-   - Free consultation or financial checkup offered?
-   - Lead magnet or newsletter signup?
-
-Return ONLY valid JSON in this exact format (replace all values with your actual assessment):
-{
-    "overall_score": [SUM OF FOUR CATEGORY SCORES],
-    "grade": "[LETTER GRADE BASED ON SCORE]",
-    "summary": "[One sentence about the site's current state]",
-    "categories": {
-        "credibility_trust": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What improving this could mean for their practice]"
-        },
-        "client_experience": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Impact on prospect engagement]"
-        },
-        "differentiation": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[What clear positioning could do for them]"
-        },
-        "conversion_path": {
-            "score": [0-25],
-            "findings": "[What you actually observe - be specific]",
-            "opportunity": "[Potential improvement in conversions]"
-        }
-    },
-    "strategic_recommendations": [
-        {
-            "priority": "HIGH",
-            "issue": "[Most important issue you identified]",
-            "impact": "[How this affects their ability to attract clients]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Second issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        },
-        {
-            "priority": "MEDIUM",
-            "issue": "[Third issue]",
-            "impact": "[Business impact]",
-            "recommendation": "[Actionable suggestion]"
-        }
-    ],
-    "competitive_insight": "[One paragraph comparing this site to what top-performing financial advisors typically do.]",
-    "bottom_line": "[2-3 sentences summarizing effectiveness and opportunity. Be honest but constructive.]"
+    "summary": "One sentence summary of the site's main weakness",
+    "bottom_line": "2-3 sentence brutally honest summary"
 }"""
-}
+    
+    return base_prompt
 
-# Default prompt if no firm type specified
-DEFAULT_GRADING_PROMPT = GRADING_PROMPTS["financial_advisor"]
 
-PDF_PROMPT = """Create a professional, executive-style HTML document for a website assessment report tailored for financial advisors. Use this data:
+PDF_PROMPT = """Create a beautiful, professional HTML document for a website audit report.
 
+The document should:
+1. Use the Nexli brand colors (blue gradient: #2563EB to #06B6D4)
+2. Have a clean, modern design with plenty of white space
+3. Include the Nexli logo at the top (use text "NEXLI" styled as a logo)
+4. Display the overall score prominently with a circular progress indicator
+5. Show each category with its score and verdict
+6. List the top problems clearly
+7. Include the bottom line assessment
+8. Have a call-to-action button at the bottom linking to https://www.nexli.net/#book
+
+Use inline CSS for all styling. Make it look premium and professional.
+
+Here is the audit data:
 {audit_data}
 
-Website URL: {website_url}
-Firm/Advisor Name: {business_name}
-Assessment Date: {assessment_date}
+Website analyzed: {website_url}
+Client name: {business_name}
+Assessment date: {assessment_date}
 
-CRITICAL - Use this exact SVG for the Nexli logo (the Breakthrough mark with wordmark):
-<svg viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#2563EB"/>
-            <stop offset="100%" style="stop-color:#06B6D4"/>
-        </linearGradient>
-    </defs>
-    <path d="M4 36L20 24L4 12L4 20L12 24L4 28L4 36Z" fill="#2563EB"/>
-    <path d="M12 36L28 24L12 12L12 18L18 24L12 30L12 36Z" fill="url(#logoGrad)"/>
-    <path d="M20 36L44 24L20 12L20 18L32 24L20 30L20 36Z" fill="#06B6D4"/>
-    <text x="52" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" letter-spacing="-1" fill="#0A1628">Nexli</text>
-</svg>
-
-Design requirements:
-- Use Nexli branding: Primary blue #2563EB, Cyan accent #06B6D4, Dark #0A1628, Light gray #F8FAFC
-- Clean, sophisticated design appropriate for financial professionals
-- Professional typography (system fonts - use font-weight strategically)
-- Executive summary style - scannable with clear hierarchy
-
-CRITICAL REQUIREMENTS:
-1. ALL Nexli logos must be wrapped in an <a href="https://www.nexli.net/#book" target="_blank"> tag so they are clickable
-2. The CTA section MUST have a visible, styled button with the text "Book Your Strategy Call"
-
-Structure:
-1. HEADER
-   - Wrap the Nexli SVG logo in: <a href="https://www.nexli.net/#book" target="_blank" style="text-decoration:none;">...</a>
-   - Make logo roughly 140px wide
-   - "Digital Presence Assessment" as subtitle below logo
-   - "Prepared for [business_name]"
-   - Use the exact Assessment Date provided above (do NOT generate your own date)
-
-2. EXECUTIVE SUMMARY
-   - Overall score displayed prominently in a circle/badge (color-coded: green 80+, blue 60-79, orange 40-59, red below 40)
-   - Grade letter next to it
-   - The "summary" field as a one-liner
-   - The "bottom_line" as a 2-3 sentence overview
-
-3. ASSESSMENT BREAKDOWN
-   - Four category cards in a 2x2 grid (or stacked on mobile)
-   - Each card shows: Category name, Score as progress bar (out of 25), Findings, Opportunity
-   - Use subtle background colors to differentiate
-
-4. STRATEGIC RECOMMENDATIONS
-   - List the 3 recommendations with priority badges (HIGH = red/orange, MEDIUM = blue)
-   - Each shows: Issue, Impact, Recommendation
-   - Frame as "opportunities" not "problems"
-
-5. COMPETITIVE INSIGHT
-   - Styled as a quote/callout box
-   - The "competitive_insight" paragraph
-
-6. NEXT STEPS CTA - THIS SECTION IS REQUIRED
-   - Professional call-to-action section with a light blue (#EFF6FF) background
-   - Include the clickable Nexli logo SVG wrapped in <a href="https://www.nexli.net/#book" target="_blank">
-   - Headline: "Ready to Elevate Your Digital Presence?"
-   - Subtext: "Schedule a complimentary strategy session to discuss how these insights apply to your firm's growth goals."
-   - Below button: "No obligation • 30-minute consultation • Tailored recommendations"
-
-7. LARGE CTA BUTTON AT THE VERY BOTTOM - REQUIRED
-   - At the absolute bottom of the document, before the footer, add this exact button centered:
-   <div style="text-align:center; padding:40px 20px; background:#EFF6FF;">
-     <a href="https://www.nexli.net/#book" target="_blank" style="display:inline-block; background:linear-gradient(135deg, #2563EB 0%, #06B6D4 100%); color:white; padding:18px 48px; border-radius:50px; text-decoration:none; font-weight:700; font-size:18px; box-shadow:0 4px 14px rgba(37,99,235,0.3);">Book Consultation</a>
-   </div>
-
-8. FOOTER
-   - Small clickable Nexli logo wrapped in <a href="https://www.nexli.net/#book" target="_blank">
-   - "Assessment powered by Nexli"
-   - "Helping financial advisors attract and convert high-value clients"
-   - Small disclaimer: "This assessment is based on automated analysis and publicly visible website elements."
-
-Make it print-friendly with proper margins. The tone should feel like a report from a peer consultant, not a criticism from a vendor. Return ONLY the HTML, no markdown code fences."""
+Return ONLY the complete HTML document, no markdown code blocks."""
 
 
 def take_screenshot(url):
-    """Take screenshot using ScreenshotOne API"""
+    """Take a screenshot using ScreenshotOne API"""
     api_url = "https://api.screenshotone.com/take"
+    
     params = {
         "access_key": SCREENSHOT_API_KEY,
         "url": url,
-        "full_page": "false",
-        "viewport_width": "1280",
-        "viewport_height": "800",
-        "device_scale_factor": "1",
+        "viewport_width": 1280,
+        "viewport_height": 800,
+        "device_scale_factor": 1,
         "format": "jpg",
-        "image_quality": "80"
+        "image_quality": 80,
+        "block_ads": True,
+        "block_cookie_banners": True,
+        "full_page": False
     }
     
-    response = requests.get(api_url, params=params, timeout=30)
+    response = requests.get(api_url, params=params, timeout=60)
     
-    if response.status_code != 200:
-        raise Exception(f"Screenshot failed: {response.status_code}")
-    
-    return base64.b64encode(response.content).decode('utf-8')
+    if response.status_code == 200:
+        return base64.b64encode(response.content).decode('utf-8')
+    else:
+        raise Exception(f"Screenshot failed: {response.status_code} - {response.text}")
 
 
-def analyze_with_gemini(screenshot_base64, firm_type=None):
-    """Analyze screenshot with Gemini Vision"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+def analyze_with_claude(screenshot_base64, firm_type=None):
+    """Analyze screenshot with Claude Vision API"""
+    url = "https://api.anthropic.com/v1/messages"
     
-    # Select the appropriate grading prompt based on firm type
-    firm_type_key = None
-    if firm_type:
-        firm_type_lower = firm_type.lower().strip()
-        if "wealth" in firm_type_lower:
-            firm_type_key = "wealth_management"
-        elif "cpa" in firm_type_lower or "account" in firm_type_lower:
-            firm_type_key = "cpa"
-        else:
-            firm_type_key = "financial_advisor"
-    
-    grading_prompt = GRADING_PROMPTS.get(firm_type_key, DEFAULT_GRADING_PROMPT)
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01"
+    }
     
     payload = {
-        "contents": [{
-            "parts": [
-                {"text": grading_prompt},
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 2048,
+        "messages": [{
+            "role": "user",
+            "content": [
                 {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
                         "data": screenshot_base64
                     }
+                },
+                {
+                    "type": "text",
+                    "text": get_grading_prompt(firm_type)
                 }
             ]
         }]
     }
     
-    response = requests.post(url, json=payload, timeout=60)
+    response = requests.post(url, json=payload, headers=headers, timeout=90)
     
     if response.status_code != 200:
-        raise Exception(f"Gemini failed: {response.status_code} - {response.text}")
+        raise Exception(f"Claude failed: {response.status_code} - {response.text}")
     
     result = response.json()
-    return result['candidates'][0]['content']['parts'][0]['text']
+    return result['content'][0]['text']
 
 
-def generate_pdf_html(audit_data, website_url, business_name):
+def generate_html_report(audit_data, website_url, business_name=None):
     """Generate branded HTML report using Claude"""
     url = "https://api.anthropic.com/v1/messages"
+    
     headers = {
+        "Content-Type": "application/json",
         "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
+        "anthropic-version": "2023-06-01"
     }
+    
+    # Get current date for the assessment
+    assessment_date = datetime.now().strftime("%B %d, %Y")
     
     payload = {
         "model": "claude-sonnet-4-20250514",
@@ -490,12 +210,12 @@ def generate_pdf_html(audit_data, website_url, business_name):
                 audit_data=audit_data,
                 website_url=website_url,
                 business_name=business_name or "the business",
-                assessment_date=datetime.now().strftime("%B %d, %Y")
+                assessment_date=assessment_date
             )
         }]
     }
     
-    response = requests.post(url, json=payload, headers=headers, timeout=60)
+    response = requests.post(url, json=payload, headers=headers, timeout=90)
     
     if response.status_code != 200:
         raise Exception(f"Claude failed: {response.status_code} - {response.text}")
@@ -562,9 +282,9 @@ def process_audit_async(contact_id, contact_email, contact_name, website_url, fi
         print("Taking screenshot...")
         screenshot = take_screenshot(website_url)
         
-        # Step 2: Gemini analysis
-        print("Analyzing with Gemini...")
-        audit_json = analyze_with_gemini(screenshot, firm_type)
+        # Step 2: Claude analysis (instead of Gemini)
+        print("Analyzing with Claude...")
+        audit_json = analyze_with_claude(screenshot, firm_type)
         
         # Clean up JSON
         audit_json = audit_json.strip()
@@ -581,7 +301,7 @@ def process_audit_async(contact_id, contact_email, contact_name, website_url, fi
         
         # Step 3: Generate branded HTML report with Claude
         print("Generating HTML report...")
-        html_report = generate_pdf_html(audit_json, website_url, contact_name)
+        html_report = generate_html_report(audit_json, website_url, contact_name)
         
         # Clean up HTML if needed
         if '```html' in html_report:
@@ -629,38 +349,34 @@ def audit_website():
     Receive webhook from GHL, immediately return 200, process in background.
     """
     try:
-        data = request.json or {}
+        data = request.json
         
-        # Extract fields (support multiple field names)
+        # Extract fields (handle various field names)
+        contact_id = data.get('id') or data.get('contact_id') or data.get('contactId')
+        contact_email = data.get('email') or data.get('contact_email')
+        contact_name = data.get('name') or data.get('contact_name') or data.get('firstName')
         website_url = data.get('website_url') or data.get('websiteUrl') or data.get('website') or data.get('url')
-        contact_email = data.get('email')
-        contact_name = data.get('name')
-        contact_id = data.get('id') or data.get('contact_id')
-        firm_type = data.get('firm_type') or data.get('firmType') or data.get('type')
+        firm_type = data.get('firm_type') or data.get('firmType')
         
         if not website_url:
-            return jsonify({'success': False, 'error': 'No website URL provided'}), 400
-        
-        # Normalize URL - add https:// if missing
-        website_url = website_url.strip()
-        if not website_url.startswith('http://') and not website_url.startswith('https://'):
-            website_url = 'https://' + website_url
+            return jsonify({
+                'success': False,
+                'error': 'No website URL provided'
+            }), 400
         
         # Start background processing
         thread = threading.Thread(
             target=process_audit_async,
             args=(contact_id, contact_email, contact_name, website_url, firm_type)
         )
-        thread.daemon = True
         thread.start()
         
         # Immediately return success
         return jsonify({
             'success': True,
-            'message': 'Audit started - results will be sent to webhook when complete',
-            'website_url': website_url,
             'contact_id': contact_id,
-            'firm_type': firm_type
+            'message': 'Audit started - results will be sent to webhook when complete',
+            'website_url': website_url
         })
         
     except Exception as e:
@@ -674,9 +390,7 @@ def audit_website():
 def health_check():
     return jsonify({
         'status': 'healthy',
-        'version': '2.0-async',
         'screenshot_key': bool(SCREENSHOT_API_KEY),
-        'gemini_key': bool(GEMINI_API_KEY),
         'claude_key': bool(CLAUDE_API_KEY),
         'r2_configured': bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY),
         'ghl_webhook': bool(GHL_WEBHOOK_URL)
